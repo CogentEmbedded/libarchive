@@ -239,6 +239,9 @@ archive_read_support_format_gnutar(struct archive *a)
 	return (archive_read_support_format_tar(a));
 }
 
+static int64_t
+archive_read_format_tar_seek_data(struct archive_read *a, int64_t offset,
+    int whence);
 
 int
 archive_read_support_format_tar(struct archive *_a)
@@ -267,7 +270,7 @@ archive_read_support_format_tar(struct archive *_a)
 	    archive_read_format_tar_read_header,
 	    archive_read_format_tar_read_data,
 	    archive_read_format_tar_skip,
-	    NULL,
+	    archive_read_format_tar_seek_data,
 	    archive_read_format_tar_cleanup,
 	    NULL,
 	    NULL);
@@ -275,6 +278,64 @@ archive_read_support_format_tar(struct archive *_a)
 	if (r != ARCHIVE_OK)
 		free(tar);
 	return (ARCHIVE_OK);
+}
+
+static int64_t
+client_seek_proxy(struct archive_read_filter *self, int64_t offset, int whence)
+{
+	if (self->archive->client.seeker == NULL) {
+		archive_set_error(&self->archive->archive, ARCHIVE_ERRNO_MISC,
+		    "Current client reader does not support seeking a device");
+		return (ARCHIVE_FAILED);
+	}
+	return (self->archive->client.seeker)(&self->archive->archive,
+	    self->data, offset, whence);
+}
+
+static int
+archive_read_format_tar_read_header(struct archive_read *a,
+    struct archive_entry *entry);
+
+static int64_t
+archive_read_format_tar_seek_data(struct archive_read *a, int64_t offset,
+    int whence)
+{
+  	struct tar *tar = (struct tar *)(a->format->data);
+	if (tar->entry_bytes_unconsumed) {
+		__archive_read_consume(a, tar->entry_bytes_unconsumed);
+		tar->entry_bytes_unconsumed = 0;
+	}
+	a->filter->avail = a->filter->client_avail = 0;
+	a->filter->next = a->filter->buffer;
+	a->filter->position = tar->entry_offset;
+	a->filter->end_of_file = 0;
+	(void)client_seek_proxy(a->filter, a->header_position, SEEK_SET);
+	archive_read_format_tar_read_header(a, a->entry);
+	int64_t client_offset;
+	(void)tar;
+    switch (whence)
+    {
+      case SEEK_CUR:
+	  	client_offset = a->archive.read_data_offset;
+        break;
+      case SEEK_END:
+		client_offset = a->header_position + tar->realsize;
+        break;
+      case SEEK_SET:
+      default:
+	  	client_offset = a->header_position;
+		break;
+    }
+	client_offset += offset;
+	if (client_offset < a->header_position) {
+      	client_offset = a->header_position;
+    }
+	else if (client_offset > tar->realsize + a->header_position) {
+		client_offset = tar->realsize + a->header_position;
+    }
+	int64_t ret_val = __archive_read_seek(a, client_offset + 512, SEEK_SET) - 512 - a->header_position;
+	__archive_reset_read_data(&a->archive);
+	return ret_val;
 }
 
 static int
