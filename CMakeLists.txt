@@ -200,8 +200,6 @@ ENDIF (MSVC)
 # Enable CTest/CDash support
 include(CTest)
 
-option(BUILD_SHARED_LIBS "Build shared libraries" ON)
-
 OPTION(ENABLE_MBEDTLS "Enable use of mbed TLS" OFF)
 OPTION(ENABLE_NETTLE "Enable use of Nettle" OFF)
 OPTION(ENABLE_OPENSSL "Enable use of OpenSSL" ON)
@@ -356,7 +354,9 @@ ENDMACRO (GENERATE_LIST_H)
 MACRO (INSTALL_MAN __mans)
   FOREACH (_man ${ARGV})
     STRING(REGEX REPLACE "^.+[.]([1-9])" "\\1" _mansect ${_man})
-    INSTALL(FILES ${_man} DESTINATION "share/man/man${_mansect}")
+    INSTALL(FILES ${_man}
+      DESTINATION "${CMAKE_INSTALL_MANDIR}/man${_mansect}"
+      COMPONENT runtime)
   ENDFOREACH (_man)
 ENDMACRO (INSTALL_MAN __mans)
 #

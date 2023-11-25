@@ -242,38 +242,71 @@ ELSEIF(ARCHIVE_ACL_SUNOS)
   LIST(APPEND libarchive_SOURCES archive_disk_acl_sunos.c)
 ENDIF()
 
-# Libarchive is a shared library
-IF(BUILD_SHARED_LIBS)
-  ADD_LIBRARY(archive SHARED ${libarchive_SOURCES} ${include_HEADERS})
-  TARGET_INCLUDE_DIRECTORIES(archive PUBLIC .)
-  TARGET_LINK_LIBRARIES(archive ${ADDITIONAL_LIBS})
-  SET_TARGET_PROPERTIES(archive PROPERTIES SOVERSION ${SOVERSION})
-ENDIF(BUILD_SHARED_LIBS)
+ADD_LIBRARY(archive ${libarchive_SOURCES} ${include_HEADERS})
+ADD_LIBRARY(libarchive::archive ALIAS archive)
 
-# archive_static is a static library
-ADD_LIBRARY(archive_static STATIC ${libarchive_SOURCES} ${include_HEADERS})
-TARGET_LINK_LIBRARIES(archive_static ${ADDITIONAL_LIBS})
-SET_TARGET_PROPERTIES(archive_static PROPERTIES COMPILE_DEFINITIONS
-  LIBARCHIVE_STATIC)
-# On Posix systems, libarchive.so and libarchive.a can co-exist.
-IF(NOT WIN32 OR CYGWIN OR NOT BUILD_SHARED_LIBS)
-  SET_TARGET_PROPERTIES(archive_static PROPERTIES OUTPUT_NAME archive)
-ENDIF(NOT WIN32 OR CYGWIN OR NOT BUILD_SHARED_LIBS)
+TARGET_INCLUDE_DIRECTORIES(archive PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
+TARGET_LINK_LIBRARIES(archive PRIVATE ${ADDITIONAL_LIBS})
+SET_TARGET_PROPERTIES(archive PROPERTIES
+  SOVERSION ${SOVERSION}
+  EXPORT_NAME archive)
+
+IF (NOT BUILD_SHARED_LIBS)
+  TARGET_COMPILE_DEFINITIONS(archive PUBLIC LIBARCHIVE_STATIC)
+ENDIF()
 
 IF(ENABLE_INSTALL)
+  INCLUDE(GNUInstallDirs)
+
   # How to install the libraries
-  IF(BUILD_SHARED_LIBS)
-    INSTALL(TARGETS archive
-            RUNTIME DESTINATION bin
-            LIBRARY DESTINATION lib
-            ARCHIVE DESTINATION lib)
-  ENDIF(BUILD_SHARED_LIBS)
-  INSTALL(TARGETS archive_static
-          RUNTIME DESTINATION bin
-          LIBRARY DESTINATION lib
-          ARCHIVE DESTINATION lib)
+  INSTALL(
+    TARGETS archive
+    EXPORT archive
+    RUNTIME
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+        COMPONENT application
+    LIBRARY
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        COMPONENT runtime
+        NAMELINK_COMPONENT devel
+    ARCHIVE
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        COMPONENT devel
+  )
+
   INSTALL_MAN(${libarchive_MANS})
-  INSTALL(FILES ${include_HEADERS} DESTINATION include)
+
+  INSTALL(FILES ${include_HEADERS}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    COMPONENT devel)
+
+  CONFIGURE_PACKAGE_CONFIG_FILE(../build/cmake/libarchiveConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/libarchiveConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libarchive
+    PATH_VARS
+      CMAKE_INSTALL_INCLUDEDIR
+      CMAKE_INSTALL_LIBDIR)
+
+  WRITE_BASIC_PACKAGE_VERSION_FILE(
+    ${CMAKE_CURRENT_BINARY_DIR}/libarchiveConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion)
+
+  INSTALL(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/libarchiveConfigVersion.cmake
+          ${CMAKE_CURRENT_BINARY_DIR}/libarchiveConfig.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libarchive
+    COMPONENT devel)
+
+  INSTALL(
+    EXPORT archive
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libarchive
+    NAMESPACE libarchive::
+    FILE libarchiveTargets.cmake
+    COMPONENT devel)
 ENDIF()
 
 add_subdirectory(test)
