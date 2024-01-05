@@ -243,7 +243,7 @@ ELSEIF(ARCHIVE_ACL_SUNOS)
 ENDIF()
 
 ADD_LIBRARY(archive ${libarchive_SOURCES} ${include_HEADERS})
-ADD_LIBRARY(libarchive::archive ALIAS archive)
+ADD_LIBRARY(LibArchive::LibArchive ALIAS archive)
 
 TARGET_INCLUDE_DIRECTORIES(archive PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
