@@ -29,5 +29,6 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/build/pkgconfig/libarchive.pc.in
 # And install it, of course ;).
 IF(ENABLE_INSTALL)
   INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/build/pkgconfig/libarchive.pc
-          DESTINATION "lib/pkgconfig")
+          DESTINATION "lib/pkgconfig"
+		  COMPONENT devel)
 ENDIF()
