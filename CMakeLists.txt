@@ -232,6 +232,7 @@ OPTION(ENABLE_ICONV "Enable iconv support" ON)
 OPTION(ENABLE_TEST "Enable unit and regression tests" ON)
 OPTION(ENABLE_COVERAGE "Enable code coverage (GCC only, automatically sets ENABLE_TEST to ON)" FALSE)
 OPTION(ENABLE_INSTALL "Enable installing of libraries" ON)
+OPTION(ENABLE_MAN_INSTALL "Enable installing of man pages" OFF)
 
 SET(POSIX_REGEX_LIB "AUTO" CACHE STRING "Choose what library should provide POSIX regular expression support")
 SET(ENABLE_SAFESEH "AUTO" CACHE STRING "Enable use of /SAFESEH linker flag (MSVC only)")
@@ -347,12 +348,14 @@ ENDMACRO (GENERATE_LIST_H)
 # Generate installation rules for man pages.
 #
 MACRO (INSTALL_MAN __mans)
-  FOREACH (_man ${ARGV})
-    STRING(REGEX REPLACE "^.+[.]([1-9])" "\\1" _mansect ${_man})
-    INSTALL(FILES ${_man}
-      DESTINATION "${CMAKE_INSTALL_MANDIR}/man${_mansect}"
-      COMPONENT runtime)
-  ENDFOREACH (_man)
+  IF (ENABLE_MAN_INSTALL)
+    FOREACH (_man ${ARGV})
+        STRING(REGEX REPLACE "^.+[.]([1-9])" "\\1" _mansect ${_man})
+        INSTALL(FILES ${_man}
+        DESTINATION "${CMAKE_INSTALL_MANDIR}/man${_mansect}"
+        COMPONENT runtime)
+    ENDFOREACH (_man)
+  ENDIF(ENABLE_MAN_INSTALL)
 ENDMACRO (INSTALL_MAN __mans)
 #
 # Find out what macro is needed to use libraries on Windows.
