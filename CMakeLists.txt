@@ -1,5 +1,5 @@
 #
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.12 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.5 FATAL_ERROR)
 if(POLICY CMP0065)
   cmake_policy(SET CMP0065 NEW) #3.4 don't use `-rdynamic` with executables
 endif()
@@ -7,7 +7,7 @@ if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW) #3.12.0 `find_package()`` uses ``<PackageName>_ROOT`` variables.
 endif()
 #
-PROJECT(libarchive C)
+PROJECT(libarchive VERSION 3.7.2 LANGUAGES C)
 #
 SET(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/build/cmake")
 if(NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
