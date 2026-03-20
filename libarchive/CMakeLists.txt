@@ -262,6 +262,7 @@ ENDIF()
 
 IF(ENABLE_INSTALL)
   INCLUDE(GNUInstallDirs)
+  INCLUDE(CMakePackageConfigHelpers)
 
   # How to install the libraries
   INSTALL(
