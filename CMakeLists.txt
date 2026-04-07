@@ -122,7 +122,6 @@ IF (CMAKE_C_COMPILER_ID MATCHES "^GNU$" OR
   SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wunused")
   SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wshadow")
   SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wmissing-prototypes")
-  SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wcast-qual")
   # Ideally this will be a compile/link time check, yet there's no obvious way
   # how considering how old our minimum required cmake version is. The official
   # cmake.org side does not host the manual pages even. Normally we can use

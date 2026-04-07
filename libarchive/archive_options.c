@@ -178,7 +178,7 @@ parse_option(const char **s, const char **m, const char **o, const char **v)
 	opt = *s;
 	val = "1";
 
-	p = strchr(opt, ',');
+	p = (char*)strchr(opt, ',');
 
 	if (p != NULL) {
 		*p = '\0';
@@ -193,14 +193,14 @@ parse_option(const char **s, const char **m, const char **o, const char **v)
 		return end;
 	}
 
-	p = strchr(opt, ':');
+	p = (char *)strchr(opt, ':');
 	if (p != NULL) {
 		*p = '\0';
 		mod = opt;
 		opt = ++p;
 	}
 
-	p = strchr(opt, '=');
+	p = (char*)strchr(opt, '=');
 	if (p != NULL) {
 		*p = '\0';
 		val = ++p;
