@@ -2825,7 +2825,7 @@ readline(struct archive_read *a, struct tar *tar, const char **start,
 	ssize_t total_size = 0;
 	const void *t;
 	const char *s;
-	void *p;
+	const void *p;
 
 	tar_flush_unconsumed(a, unconsumed);
 

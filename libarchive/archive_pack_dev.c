@@ -326,7 +326,7 @@ compare_format(const void *key, const void *element)
 pack_t *
 pack_find(const char *name)
 {
-	struct format	*format;
+	const struct format	*format;
 
 	format = bsearch(name, formats,
 	    sizeof(formats)/sizeof(formats[0]),
