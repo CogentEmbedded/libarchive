@@ -295,7 +295,7 @@ IF(ENABLE_TEST)
   # Register target
   #
   ADD_EXECUTABLE(libarchive_test ${libarchive_test_SOURCES})
-  TARGET_LINK_LIBRARIES(libarchive_test archive_static ${ADDITIONAL_LIBS})
+  TARGET_LINK_LIBRARIES(libarchive_test LibArchive::LibArchive ${ADDITIONAL_LIBS})
   SET_PROPERTY(TARGET libarchive_test PROPERTY COMPILE_DEFINITIONS
     LIBARCHIVE_STATIC LIST_H)
 
@@ -328,4 +328,3 @@ IF(ENABLE_TEST)
 	COMMAND	libarchive_test -r ${CMAKE_CURRENT_SOURCE_DIR} -vv)
   ADD_DEPENDENCIES(run_all_tests run_libarchive_test)
 ENDIF(ENABLE_TEST)
-

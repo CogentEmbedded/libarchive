@@ -25,13 +25,7 @@ IF(ENABLE_UNZIP)
 
   # How to build bsdunzip
   ADD_EXECUTABLE(bsdunzip ${bsdunzip_SOURCES})
-  IF(ENABLE_UNZIP_SHARED)
-    TARGET_LINK_LIBRARIES(bsdunzip archive ${ADDITIONAL_LIBS})
-  ELSE(ENABLE_UNZIP_SHARED)
-    TARGET_LINK_LIBRARIES(bsdunzip archive_static ${ADDITIONAL_LIBS})
-    SET_TARGET_PROPERTIES(bsdunzip PROPERTIES COMPILE_DEFINITIONS
-                                 LIBARCHIVE_STATIC)
-  ENDIF(ENABLE_UNZIP_SHARED)
+  TARGET_LINK_LIBRARIES(bsdunzip LibArchive::LibArchive)
 
   # Installation rules
   INSTALL(TARGETS bsdunzip RUNTIME DESTINATION bin)
