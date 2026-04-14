@@ -133,6 +133,7 @@ struct tar {
 	int			 pax_hdrcharset_binary;
 	int			 header_recursion_depth;
 	int64_t			 entry_bytes_remaining;
+	int64_t			 entry_data_start;
 	int64_t			 entry_offset;
 	int64_t			 entry_padding;
 	int64_t 		 entry_bytes_unconsumed;
@@ -280,18 +281,6 @@ archive_read_support_format_tar(struct archive *_a)
 	return (ARCHIVE_OK);
 }
 
-static int64_t
-client_seek_proxy(struct archive_read_filter *self, int64_t offset, int whence)
-{
-	if (self->archive->client.seeker == NULL) {
-		archive_set_error(&self->archive->archive, ARCHIVE_ERRNO_MISC,
-		    "Current client reader does not support seeking a device");
-		return (ARCHIVE_FAILED);
-	}
-	return (self->archive->client.seeker)(&self->archive->archive,
-	    self->data, offset, whence);
-}
-
 static int
 archive_read_format_tar_read_header(struct archive_read *a,
     struct archive_entry *entry);
@@ -300,42 +289,66 @@ static int64_t
 archive_read_format_tar_seek_data(struct archive_read *a, int64_t offset,
     int whence)
 {
-  	struct tar *tar = (struct tar *)(a->format->data);
-	if (tar->entry_bytes_unconsumed) {
-		__archive_read_consume(a, tar->entry_bytes_unconsumed);
-		tar->entry_bytes_unconsumed = 0;
+	struct tar *tar = (struct tar *)(a->format->data);
+	int64_t base_offset, target_offset, ret;
+	int sparse_count;
+	int64_t sparse_offset, sparse_length;
+
+	/*
+	 * For regular tar entries, random access is only safe when the
+	 * entry data is a single contiguous block in the archive.
+	 */
+	sparse_count = archive_entry_sparse_count(a->entry);
+	if (sparse_count > 0) {
+		if (sparse_count != 1 ||
+		    archive_entry_sparse_reset(a->entry) != ARCHIVE_OK ||
+		    archive_entry_sparse_next(a->entry, &sparse_offset,
+		        &sparse_length) != ARCHIVE_OK ||
+		    sparse_offset != 0 || sparse_length != tar->realsize) {
+			archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
+			    "Seeking of non-contiguous tar entries is unsupported");
+			return (ARCHIVE_FAILED);
+		}
 	}
-	a->filter->avail = a->filter->client_avail = 0;
-	a->filter->next = a->filter->buffer;
-	a->filter->position = tar->entry_offset;
-	a->filter->end_of_file = 0;
-	(void)client_seek_proxy(a->filter, a->header_position, SEEK_SET);
-	archive_read_format_tar_read_header(a, a->entry);
-	int64_t client_offset;
-	(void)tar;
-    switch (whence)
-    {
-      case SEEK_CUR:
-	  	client_offset = a->archive.read_data_offset;
-        break;
-      case SEEK_END:
-		client_offset = a->header_position + tar->realsize;
-        break;
-      case SEEK_SET:
-      default:
-	  	client_offset = a->header_position;
+
+	switch (whence) {
+	case SEEK_CUR:
+		base_offset = a->archive.read_data_output_offset;
 		break;
-    }
-	client_offset += offset;
-	if (client_offset < a->header_position) {
-      	client_offset = a->header_position;
-    }
-	else if (client_offset > tar->realsize + a->header_position) {
-		client_offset = tar->realsize + a->header_position;
-    }
-	int64_t ret_val = __archive_read_seek(a, client_offset + 512, SEEK_SET) - 512 - a->header_position;
+	case SEEK_END:
+		base_offset = tar->realsize;
+		break;
+	case SEEK_SET:
+	default:
+		base_offset = 0;
+		break;
+	}
+
+	target_offset = base_offset + offset;
+	if (target_offset < 0 || target_offset > tar->realsize) {
+		archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
+		    "Attempt to seek past beginning or end of tar data block");
+		return (ARCHIVE_FAILED);
+	}
+
+	ret = __archive_read_seek(
+	    a, tar->entry_data_start + target_offset, SEEK_SET);
+	if (ret < ARCHIVE_OK)
+		return (ret);
+
+	gnu_clear_sparse_list(tar);
+	if (gnu_add_sparse_entry(a, tar, target_offset,
+	        tar->realsize - target_offset) != ARCHIVE_OK)
+		return (ARCHIVE_FATAL);
+	tar->entry_offset = target_offset;
+	tar->entry_bytes_remaining = tar->realsize - target_offset;
+	tar->entry_padding = 0x1ff & (-tar->realsize);
+	tar->entry_bytes_unconsumed = 0;
+
 	__archive_reset_read_data(&a->archive);
-	return ret_val;
+	a->archive.read_data_output_offset = target_offset;
+	a->archive.read_data_offset = target_offset;
+	return (target_offset);
 }
 
 static int
@@ -585,6 +598,7 @@ archive_read_format_tar_read_header(struct archive_read *a,
 	}
 
 	tar = (struct tar *)(a->format->data);
+	tar->entry_data_start = 0;
 	tar->entry_offset = 0;
 	gnu_clear_sparse_list(tar);
 	tar->realsize = -1; /* Mark this as "unset" */
@@ -604,6 +618,7 @@ archive_read_format_tar_read_header(struct archive_read *a,
 	r = tar_read_header(a, tar, entry, &unconsumed);
 
 	tar_flush_unconsumed(a, &unconsumed);
+	tar->entry_data_start = a->filter->position;
 
 	/*
 	 * "non-sparse" files are really just sparse files with
@@ -2825,7 +2840,7 @@ readline(struct archive_read *a, struct tar *tar, const char **start,
 	ssize_t total_size = 0;
 	const void *t;
 	const char *s;
-	void *p;
+	const void *p;
 
 	tar_flush_unconsumed(a, unconsumed);
 
