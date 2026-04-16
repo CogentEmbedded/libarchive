@@ -749,6 +749,18 @@ dump_tar_entry(struct archive *a, int fd, int64_t entry_size)
 	assertEqualInt(0, archive_read_data(a, buff, 1));
 }
 
+#if defined(_WIN32)
+static ssize_t pread(int fildes, void *buf, size_t nbyte, off_t offset)
+{
+	const off_t r = lseek(fildes, offset, SEEK_SET);
+	if (r == -1)
+	{
+		return -1;
+	}
+	return read(fildes, buf, nbyte);
+}
+#endif
+
 static void
 check_tar_seek_dump(
     struct archive *a, int fd, int64_t entry_size, int64_t offset)
