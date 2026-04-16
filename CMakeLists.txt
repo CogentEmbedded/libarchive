@@ -1,7 +1,7 @@
 #
 cmake_minimum_required(VERSION 3.17 FATAL_ERROR)
 
-PROJECT(libarchive C)
+PROJECT(libarchive VERSION 3.8.7 LANGUAGES C)
 #
 # Include standard installation directories
 include(GNUInstallDirs)
@@ -27,16 +27,6 @@ GET_PROPERTY(cached_type CACHE CMAKE_BUILD_TYPE PROPERTY TYPE)
 IF("${cached_type}" STREQUAL "UNINITIALIZED")
   SET(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING "Build Type" FORCE)
 ENDIF("${cached_type}" STREQUAL "UNINITIALIZED")
-# Check the Build Type.
-# Convert the CMAKE_BUILD_TYPE to uppercase to perform a case-insensitive comparison.
-string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UPPER)
-IF(NOT "${CMAKE_BUILD_TYPE_UPPER}"
-       MATCHES "^(DEBUG|RELEASE|RELWITHDEBINFO|MINSIZEREL|NONE)\$")
-  MESSAGE(FATAL_ERROR
-          "Unknown keyword for CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}\n"
-          "Acceptable keywords: Debug, Release, RelWithDebInfo, MinSizeRel, None")
-ENDIF(NOT "${CMAKE_BUILD_TYPE_UPPER}"
-       MATCHES "^(DEBUG|RELEASE|RELWITHDEBINFO|MINSIZEREL|NONE)\$")
 
 # On MacOS, prefer MacPorts libraries to system libraries.
 # I haven't come up with a compelling argument for this to be conditional.
@@ -208,17 +198,10 @@ IF (MSVC)
   # Enable level 4 C4706: The test value in a conditional expression was the
   #                       result of an assignment.
   SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /w14706")
-  # /Oi option enables built-in functions.
-  SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Oi")
-  #################################################################
-  # Set compile flags for release build.
-  SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Oi")
 ENDIF (MSVC)
 
 # Enable CTest/CDash support
 include(CTest)
-
-option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 
 OPTION(ENABLE_MBEDTLS "Enable use of mbed TLS" OFF)
 OPTION(ENABLE_NETTLE "Enable use of Nettle" OFF)
@@ -259,6 +242,7 @@ OPTION(ENABLE_ICONV "Enable iconv support" ON)
 OPTION(ENABLE_TEST "Enable unit and regression tests" ON)
 OPTION(ENABLE_COVERAGE "Enable code coverage (GCC only, automatically sets ENABLE_TEST to ON)" FALSE)
 OPTION(ENABLE_INSTALL "Enable installing of libraries" ON)
+OPTION(ENABLE_MAN_INSTALL "Enable installing of man pages" OFF)
 
 IF(WIN32 AND MSVC)
   OPTION(MSVC_USE_STATIC_CRT "Use static CRT" OFF)
@@ -366,12 +350,14 @@ ENDMACRO (GENERATE_LIST_H)
 # Generate installation rules for man pages.
 #
 MACRO (INSTALL_MAN __mans)
-  IF(ENABLE_INSTALL)
+  IF (ENABLE_MAN_INSTALL)
     FOREACH (_man ${ARGV})
-      STRING(REGEX REPLACE "^.+[.]([1-9])" "\\1" _mansect ${_man})
-      INSTALL(FILES ${_man} DESTINATION "share/man/man${_mansect}")
+        STRING(REGEX REPLACE "^.+[.]([1-9])" "\\1" _mansect ${_man})
+        INSTALL(FILES ${_man}
+        DESTINATION "${CMAKE_INSTALL_MANDIR}/man${_mansect}"
+        COMPONENT runtime)
     ENDFOREACH (_man)
-  ENDIF(ENABLE_INSTALL)
+  ENDIF(ENABLE_MAN_INSTALL)
 ENDMACRO (INSTALL_MAN __mans)
 #
 # Find out what macro is needed to use libraries on Windows.
